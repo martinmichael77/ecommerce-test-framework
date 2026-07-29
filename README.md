@@ -1,4 +1,4 @@
-# ecommerce-sdet-framework
+# ecommerce-test-framework
 
 Project structure:
 
