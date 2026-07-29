@@ -76,7 +76,8 @@ export const options = {
   },
 };
 
-const BASE_URL = 'http://localhost:4000';
+// const BASE_URL = 'http://localhost:4000';
+const BASE_URL = __ENV.MOCK_API_URL || 'http://localhost:4000';
 
 export default function () {
   const res = http.get(`${BASE_URL}/api/productsList`);
