@@ -1,40 +1,96 @@
-services:
-  mock-api:
-    build:
-      context: .
-      dockerfile: load-tests/mock-server/Dockerfile
-    ports:
-      - "4000:4000"
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/api/productsList', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+name: Playwright Tests
 
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: ecommerce_test
-      POSTGRES_USER: test_user
-      POSTGRES_PASSWORD: test_password
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U test_user -d ecommerce_test"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
-  test-runner:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    depends_on:
-      mock-api:
-        condition: service_healthy
-    environment:
-      - MOCK_API_URL=http://mock-api:4000
-    volumes:
-      - ./playwright-report:/app/playwright-report
-      - ./test-results:/app/test-results
-    command: ["npx", "playwright", "test"]
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ecommerce_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test_user -d ecommerce_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: ecommerce_test
+      DB_USER: test_user
+      DB_PASSWORD: test_password
+      API_PORT: 3000
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Initialize database
+        run: |
+          docker exec \
+            $(docker ps -q --filter "ancestor=postgres:16-alpine") \
+            psql -U "$DB_USER" -d "$DB_NAME" \
+            -f /dev/stdin < src/db/schema.sql
+
+      - name: Start Product API
+        run: |
+          npm run start:api > api.log 2>&1 &
+
+      - name: Wait for Product API
+        run: npx wait-on http://localhost:3000/health
+
+      - name: Run UI tests
+        run: npx playwright test tests/ui
+
+      - name: Run API tests
+        run: npx playwright test tests/api
+
+      - name: Run Hybrid tests
+        run: npx playwright test tests/hybrid
+
+      - name: Run Database tests
+        run: npx playwright test tests/db
+
+      - name: Run API → Database integration tests
+        run: npx playwright test tests/integration
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload API logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-logs
+          path: api.log
+          retention-days: 7

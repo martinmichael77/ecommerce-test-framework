@@ -10,8 +10,14 @@ export class ProductServer {
 
     this.app.use(express.json());
 
-    this.app.post('/api/products', this.createProduct.bind(this));
-    this.app.get('/api/products/:id', this.getProduct.bind(this));
+this.app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ok',
+  });
+});
+
+this.app.post('/api/products', this.createProduct.bind(this));
+this.app.get('/api/products/:id', this.getProduct.bind(this));
   }
 
   private async createProduct(req: Request, res: Response): Promise<void> {
