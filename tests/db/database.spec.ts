@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { DatabaseClient } from '../../src/db/DatabaseClient';
-import { DatabaseSeeder } from '../../src/db/DatabaseSeeder.ts';
+import { DatabaseSeeder } from '../../src/db/DatabaseSeeder';
 
 test.describe('Database validation', () => {
   let db: DatabaseClient;
@@ -10,12 +10,12 @@ test.describe('Database validation', () => {
     db = new DatabaseClient();
     seeder = new DatabaseSeeder(db);
 
-    await seeder.clearProducts();
+    await seeder.clearSeededProducts();
     await seeder.seedProducts();
   });
 
   test.afterAll(async () => {
-    await seeder.clearProducts();
+    await seeder.clearSeededProducts();
     await db.close();
   });
 
