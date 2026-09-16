@@ -3,10 +3,6 @@ import { DatabaseClient } from './DatabaseClient';
 export class DatabaseSeeder {
   constructor(private readonly db: DatabaseClient) {}
 
-  async clearProducts(): Promise<void> {
-    await this.db.query('TRUNCATE TABLE products RESTART IDENTITY');
-  }
-
   async seedProducts(): Promise<void> {
     await this.db.query(
       `
@@ -30,6 +26,16 @@ export class DatabaseSeeder {
         'H&M',
         'Tops',
       ],
+    );
+  }
+
+  async clearSeededProducts(): Promise<void> {
+    await this.db.query(
+      `
+      DELETE FROM products
+      WHERE name IN ($1, $2, $3)
+      `,
+      ['Blue Top', 'Winter Top', 'Summer White Top'],
     );
   }
 }

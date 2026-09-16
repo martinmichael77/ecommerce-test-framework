@@ -1,20 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { DatabaseClient } from '../../src/db/DatabaseClient';
-import { DatabaseSeeder } from '../../src/db/DatabaseSeeder';
 
 test.describe('Product API → Database integration', () => {
   let db: DatabaseClient;
-  let seeder: DatabaseSeeder;
 
   test.beforeAll(async () => {
     db = new DatabaseClient();
-    seeder = new DatabaseSeeder(db);
-
-    await seeder.clearProducts();
   });
 
   test.afterAll(async () => {
-    await seeder.clearProducts();
     await db.close();
   });
 
@@ -71,5 +65,10 @@ test.describe('Product API → Database integration', () => {
       brand: product.brand,
       category: product.category,
     });
+
+    await db.query(
+      'DELETE FROM products WHERE id = $1',
+      [productId],
+    );
   });
 });
